@@ -1,47 +1,48 @@
 name: Build Kernel A35 KSU
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - main
 
 jobs:
-  build_kernel:
+  build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Code
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Build Tools
+      - name: Setup Build Environment
         run: |
           sudo apt-get update
           sudo apt-get install -y bc build-essential flex bison libssl-dev libelf-dev clang llvm lld curl wget git zip
-          # تحميل مفكات سامسونج (Clang)
-          git clone --depth=1 https://github.com/LineageOS/android_prebuilts_clang_kernel_linux-x86_clang-r487703 ./clang-res
+          # تحميل الـ Toolchain المناسب (Clang 17)
+          git clone --depth=1 https://gitlab.com/rebornos-team/prebuilt-kernels/clang-android-17 ./clang
 
-      - name: Sync Kernel Source
+      - name: Sync Source and KSU
         run: |
-          # هنا بنحمل السورس. سأستخدم رابط افتراضي، تأكد من تبديله برابط ملفك إذا لم يعمل
-          echo "[+] Downloading Source..."
-          # wget "رابط_ملف_SM-A356E_المباشر" -O kernel.zip
-          # unzip kernel.zip -d kernel_root
+          # 1. تحميل السورس (سنستخدم سورس Exynos 1380 المتوافق)
+          # ملاحظة: إذا كان لديك رابط مباشر لملف SM-A356E.zip ضعه هنا
+          git clone --depth=1 https://github.com/Samsung-Exynos1380/android_kernel_samsung_a35 kernel_root
+          
+          # 2. دمج KernelSU
+          cd kernel_root
+          curl -LSs "https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh" | bash -s main
+          
+          # 3. إضافة الإعدادات للـ Defconfig
+          echo "CONFIG_KSU=y" >> arch/arm64/configs/exynos1380_defconfig
+          echo "CONFIG_OVERLAY_FS=y" >> arch/arm64/configs/exynos1380_defconfig
 
-      - name: Setup KernelSU
+      - name: Start Building
         run: |
-          # دمج KernelSU في السورس
-          # cd kernel_root && curl -LSs "https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh" | bash -s main
-          # echo "CONFIG_KSU=y" >> arch/arm64/configs/exynos1380_defconfig
+          export PATH=$(pwd)/clang/bin:$PATH
+          cd kernel_root
+          make O=out ARCH=arm64 exynos1380_defconfig
+          make O=out ARCH=arm64 \
+          CC=clang \
+          CLANG_TRIPLE=aarch64-linux-gnu- \
+          CROSS_COMPILE=aarch64-linux-android- \
+          -j$(nproc)
 
-      - name: Build
-        run: |
-          echo "[+] Starting Compilation..."
-          # مسار الـ Clang
-          # export PATH=$(pwd)/clang-res/bin:$PATH
-          # make -C kernel_root O=out ARCH=arm64 exynos1380_defconfig
-          # make -C kernel_root O=out ARCH=arm64 CC=clang -j$(nproc)
-
-      - name: Upload Image
+      - name: Upload Kernel
         uses: actions/upload-artifact@v4
         with:
-          name: Kernel_Image_A35
+          name: Kernel_A35_KSU
           path: kernel_root/out/arch/arm64/boot/Image

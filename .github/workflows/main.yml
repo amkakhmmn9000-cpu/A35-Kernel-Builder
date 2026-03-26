@@ -1,9 +1,9 @@
 name: Build Kernel A35 KSU
 on:
-  workflow_dispatch: # هذا يضيف زر التشغيل اليدوي
+  workflow_dispatch:
   push:
     branches:
-      - main # يبدأ البناء تلقائياً عند حفظ الكود
+      - main
 
 jobs:
   build_kernel:
@@ -16,8 +16,32 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y bc build-essential flex bison libssl-dev libelf-dev clang llvm lld curl wget git zip
+          # تحميل مفكات سامسونج (Clang)
+          git clone --depth=1 https://github.com/LineageOS/android_prebuilts_clang_kernel_linux-x86_clang-r487703 ./clang-res
 
-      - name: Build Start
+      - name: Sync Kernel Source
         run: |
-          echo "الآن يمكنك إضافة أوامر تحميل السورس والبناء هنا"
-          # سأترك لك مكاناً لوضع رابط السورس الخاص بك
+          # هنا بنحمل السورس. سأستخدم رابط افتراضي، تأكد من تبديله برابط ملفك إذا لم يعمل
+          echo "[+] Downloading Source..."
+          # wget "رابط_ملف_SM-A356E_المباشر" -O kernel.zip
+          # unzip kernel.zip -d kernel_root
+
+      - name: Setup KernelSU
+        run: |
+          # دمج KernelSU في السورس
+          # cd kernel_root && curl -LSs "https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh" | bash -s main
+          # echo "CONFIG_KSU=y" >> arch/arm64/configs/exynos1380_defconfig
+
+      - name: Build
+        run: |
+          echo "[+] Starting Compilation..."
+          # مسار الـ Clang
+          # export PATH=$(pwd)/clang-res/bin:$PATH
+          # make -C kernel_root O=out ARCH=arm64 exynos1380_defconfig
+          # make -C kernel_root O=out ARCH=arm64 CC=clang -j$(nproc)
+
+      - name: Upload Image
+        uses: actions/upload-artifact@v4
+        with:
+          name: Kernel_Image_A35
+          path: kernel_root/out/arch/arm64/boot/Image

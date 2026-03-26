@@ -1,1 +1,44 @@
+name: Build Kernel with KernelSU (A35)
+on:
+  workflow_dispatch: # يتيح لك تشغيل البناء يدوياً بضغطة زر
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup Build Environment
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y bc build-essential flex bison libssl-dev libelf-dev clang llvm lld
+
+      - name: Download Kernel Source
+        run: |
+          # هنا تضع رابط سورس كود سامسونج الخاص بجهازك (A356E)
+          # يمكنك رفعه على جيت هاب أو وضع رابط تحميل مباشر
+          curl -LSs "رابط_سورس_سامسونج_المباشر" -o kernel.zip
+          unzip kernel.zip
+
+      - name: Integrate KernelSU
+        run: |
+          cd kernel
+          # دمج كود KernelSU في السورس كود
+          curl -LSs "https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh" | bash -s main
+          
+          # تفعيل KernelSU في الـ Defconfig
+          # استبدل 'a35_defconfig' باسم ملف الإعدادات الخاص بجهازك
+          echo "CONFIG_KSU=y" >> arch/arm64/configs/exynos1380_defconfig
+          echo "CONFIG_OVERLAY_FS=y" >> arch/arm64/configs/exynos1380_defconfig
+
+      - name: Start Compilation
+        run: |
+          cd kernel
+          # أوامر بناء الكيرنل باستخدام Clang
+          make O=out ARCH=arm64 exynos1380_defconfig
+          make O=out ARCH=arm64 CC=clang CLANG_TRIPLE=aarch64-linux-gnu- CROSS_COMPILE=aarch64-linux-gnu- -j$(nproc)
+
+      - name: Upload Result
+        uses: actions/upload-artifact@v4
+        with:
+          name: Kernel_Image_with_KSU
+          path: kernel/out/arch/arm64/boot/Image.gz # أو ملف boot.img الناتج
 

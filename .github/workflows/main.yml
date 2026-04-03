@@ -14,16 +14,16 @@ jobs:
 
       - name: Download Source
         run: |
-          # سحب ملف سامسونج من الرابط بتاعك
           gdown 1dbt4VddgANMIP13bcYUgKgik5hQp0Joa
           unzip SM-A356E_MEA_15_Opensource.zip
           find . -name "Kernel.tar.gz" -exec tar -xf {} \;
           mv Kernel/* . || true
 
-      - name: Build KernelSU
-        uses: dabyd64/github-actions-android-kernel-builder@master
+      - name: Build Kernel with KernelSU
+        uses: Boilerplate-Lib/kernel-build-action@main
         with:
           arch: arm64
           compiler: clang
           defconfig: s5e8835_defconfig
           kernelsu: true
+          kernelsu_version: main

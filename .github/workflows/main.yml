@@ -1,46 +1,29 @@
-name: Auto Import and Build Kernel
+name: A35 Kernel Cloud Build
 on:
   workflow_dispatch:
 
 jobs:
-  import-and-build:
+  build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
+      - name: Free Space
+        run: sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc
 
-      - name: Install Tools
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y wget zip unzip python3-pip
-          pip3 install gdown
+      - name: Install gdown
+        run: pip3 install gdown
 
-      - name: Download Source from Google Drive
+      - name: Download Source
         run: |
-          # سحب الملف من الرابط اللي بعته
+          # سحب ملف سامسونج من الرابط بتاعك
           gdown 1dbt4VddgANMIP13bcYUgKgik5hQp0Joa
-          
-          # فك الضغط (سامسونج عادة بتضغط الملف مرتين)
           unzip SM-A356E_MEA_15_Opensource.zip
-          
-          # فك ملف الكيرنل الفعلي (الذي ينتهي بـ .tar.gz)
-          find . -name "Kernel.tar.gz" -exec tar -xvf {} \;
-          
-          # التأكد من وجود الملفات في المجلد الرئيسي للسيرفر
+          find . -name "Kernel.tar.gz" -exec tar -xf {} \;
           mv Kernel/* . || true
 
-      - name: Build Kernel with KernelSU
+      - name: Build KernelSU
         uses: dabyd64/github-actions-android-kernel-builder@master
         with:
           arch: arm64
           compiler: clang
-          # ده الاسم القياسي لملفات سامسونج للفئة دي
           defconfig: s5e8835_defconfig
           kernelsu: true
-          kernelsu_version: main
-
-      - name: Upload Finished Kernel
-        uses: actions/upload-artifact@v4
-        with:
-          name: A35-KernelSU-Image
-          path: out/arch/arm64/boot/Image
